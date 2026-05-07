@@ -1,13 +1,6 @@
 # ICM Methodology
 
-A portfolio project by **John Anthony** that explores and documents the **Interpretable Context Methodology (ICM)**: a filesystem-first approach to AI workflow orchestration using folders, markdown contracts, and staged human review.
-
-## Creator
-
-- **Name:** John Anthony
-- **GitHub:** [anthonyjohn17](https://github.com/anthonyjohn17)
-
-## Project Overview
+**Interpretable Context Methodology (ICM)** is a filesystem-first approach to AI workflow orchestration using folders, markdown contracts, and staged human review.
 
 This repository captures a practical and conceptual exploration of ICM, centered on the idea that:
 
@@ -32,10 +25,4 @@ Instead of relying on complex multi-agent framework code, ICM organizes workflow
 
 - arXiv abstract: [Interpretable Context Methodology](https://arxiv.org/abs/2603.16021)
 - arXiv PDF: [https://arxiv.org/pdf/2603.16021](https://arxiv.org/pdf/2603.16021)
-
-## Suggested Next Steps
-
-- Publish this repository on GitHub with a short portfolio description.
-- Add screenshots/GIFs of `filetree-agent.html` in action.
-- Add a short case study section describing how you would apply ICM to a real workflow.
 

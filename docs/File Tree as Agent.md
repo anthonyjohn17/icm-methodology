@@ -2,13 +2,11 @@
 
 --
 
-**The Hidden Power of Claude Code + Skills Architecture**
+## **The Hidden Power of Claude Code + Skills Architecture**
 
 *Synthesized concept about leveraging free AI tools strategically*
 
----
-
-## The Core Problem: The "Context Wall"
+### The Core Problem: The "Context Wall"
 
 Most companies want to use AI but hit an invisible barrier — not a technical one, but an organizational one. How do you structure your company's instructions, data, and tools so that an AI can use them reliably without breaking things or forgetting context? This is the context wall.
 
