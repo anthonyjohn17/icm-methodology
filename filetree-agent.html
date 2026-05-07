@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The File Tree IS the Agent</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Syne:wght@400;700;800&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0a0c0f;--surface:#0f1215;--panel:#131820;--border:#1e2530;--accent:#00ff88;--accent2:#00aaff;--accent3:#ff6b35;--warn:#ffcc00;--text:#c8d4e0;--muted:#4a5568;--dim:#2d3748;--font-mono:'JetBrains Mono',monospace;--font-display:'Syne',sans-serif}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:13px;line-height:1.6;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.4}
+
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:200;border-bottom:1px solid var(--border);background:rgba(10,12,15,.95);backdrop-filter:blur(12px);height:52px;display:flex;align-items:center;padding:0 32px;gap:0}
+  .topbar-logo{font-family:var(--font-display);font-size:14px;font-weight:800;letter-spacing:.1em;color:var(--accent);margin-right:32px;white-space:nowrap}
+  .tab-switcher{display:flex;gap:2px;margin-right:auto}
+  .tab-btn{padding:6px 18px;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid transparent;border-radius:2px;cursor:pointer;transition:all .2s;background:transparent;color:var(--muted)}
+  .tab-btn:hover{color:var(--text);border-color:var(--border)}
+  .tab-btn.active{background:rgba(0,255,136,.08);color:var(--accent);border-color:rgba(0,255,136,.25)}
+  .subnav{display:flex;gap:20px;overflow-x:auto}
+  .subnav a{color:var(--muted);font-size:11px;text-decoration:none;letter-spacing:.08em;text-transform:uppercase;transition:color .2s;cursor:pointer;white-space:nowrap}
+  .subnav a:hover,.subnav a.active{color:var(--accent)}
+
+  .tab-pane{display:none}.tab-pane.active{display:block}
+
+  section{min-height:100vh;padding:100px 48px 80px;display:flex;flex-direction:column;justify-content:center;max-width:1200px;margin:0 auto}
+  .section-tag{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent2);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+  .section-tag::before{content:'';width:20px;height:1px;background:var(--accent2)}
+  h2{font-family:var(--font-display);font-size:clamp(28px,4vw,52px);font-weight:800;color:#fff;margin-bottom:16px;line-height:1.1}
+  h2 span{color:var(--accent)}
+  .section-lead{color:var(--muted);font-size:14px;max-width:600px;line-height:1.8;margin-bottom:48px}
+
+  #hero{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:center;max-width:1200px;margin:0 auto;padding:120px 48px 80px}
+  .hero-eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:24px;display:flex;align-items:center;gap:10px}
+  .hero-eyebrow::before{content:'';width:32px;height:1px;background:var(--accent)}
+  h1{font-family:var(--font-display);font-size:clamp(42px,6vw,88px);font-weight:800;line-height:.95;letter-spacing:-.02em;color:#fff;margin-bottom:32px}
+  h1 span{color:var(--accent)}
+  .hero-sub{font-size:15px;color:var(--muted);max-width:520px;line-height:1.8;margin-bottom:48px}
+  .hero-cta{display:flex;gap:16px;flex-wrap:wrap}
+  .btn{padding:10px 24px;font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;cursor:pointer;border-radius:2px;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block}
+  .btn-primary{background:var(--accent);color:#000;border:none;font-weight:700}
+  .btn-primary:hover{background:#00ffaa;transform:translateY(-1px)}
+  .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .hero-grid{position:absolute;top:0;right:-100px;width:55%;height:100%;pointer-events:none;overflow:hidden;opacity:.15}
+  .hero-grid svg{width:100%;height:100%}
+
+  .problem-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:48px}
+  .prob-card{background:var(--panel);border:1px solid var(--border);padding:28px;position:relative;overflow:hidden}
+  .prob-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+  .prob-card.bad::before{background:var(--accent3)}.prob-card.good::before{background:var(--accent)}
+  .prob-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:12px}
+  .prob-card.bad .prob-label{color:var(--accent3)}.prob-card.good .prob-label{color:var(--accent)}
+  .prob-title{font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:12px}
+  .prob-desc{color:var(--muted);font-size:12px;line-height:1.7}
+  .framework-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+  .tag{padding:3px 10px;font-size:10px;letter-spacing:.05em;border-radius:2px;font-family:var(--font-mono)}
+  .tag-red{background:rgba(255,107,53,.1);color:var(--accent3);border:1px solid rgba(255,107,53,.2)}
+  .tag-green{background:rgba(0,255,136,.08);color:var(--accent);border:1px solid rgba(0,255,136,.2)}
+  .tag-blue{background:rgba(0,170,255,.08);color:var(--accent2);border:1px solid rgba(0,170,255,.2)}
+  .tag-yellow{background:rgba(255,204,0,.08);color:var(--warn);border:1px solid rgba(255,204,0,.2)}
+
+  .terminal{background:#050608;border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:32px}
+  .terminal-bar{background:var(--panel);padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .term-dot{width:10px;height:10px;border-radius:50%}
+  .term-dot.r{background:#ff5f56}.term-dot.y{background:#ffbd2e}.term-dot.g{background:#27c93f}
+  .term-title{font-size:11px;color:var(--muted);margin-left:8px;letter-spacing:.05em}
+  .terminal-body{padding:20px 24px;font-size:12px;line-height:1.9;min-height:200px}
+  .t-prompt{color:var(--accent)}.t-cmd{color:#fff}.t-out{color:var(--muted)}.t-success{color:var(--accent)}.t-info{color:var(--accent2)}
+  .t-line{display:block}
+  .cursor{display:inline-block;width:8px;height:13px;background:var(--accent);animation:blink 1s infinite;vertical-align:middle}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  .tree-container{display:grid;grid-template-columns:320px 1fr;gap:2px;background:var(--border);border:1px solid var(--border);border-radius:2px;overflow:hidden;min-height:500px}
+  .tree-sidebar{background:var(--panel);padding:0;overflow-y:auto}
+  .tree-header{padding:12px 16px;border-bottom:1px solid var(--border);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .tree-header .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+  .tree-node{display:flex;align-items:center;gap:6px;padding:5px 16px;cursor:pointer;transition:background .15s;font-size:12px;user-select:none;position:relative}
+  .tree-node:hover{background:rgba(255,255,255,.03)}.tree-node.active{background:rgba(0,255,136,.06)}
+  .tree-node.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent)}
+  .tree-indent{display:inline-block}
+  .folder-name{color:var(--accent2)}.file-md{color:var(--accent)}.file-py{color:#ffd700}.file-data{color:#b48ead}
+  .tree-badge{font-size:9px;padding:1px 5px;border-radius:2px;background:rgba(0,255,136,.1);color:var(--accent);letter-spacing:.05em}
+  .tree-toggle{color:var(--muted);font-size:10px;transition:transform .2s}.tree-toggle.open{transform:rotate(90deg)}
+  .detail-panel{background:var(--surface);padding:32px;overflow-y:auto}
+  .detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:12px;gap:12px}
+  .detail-empty .big{font-size:48px}
+  .detail-path{font-size:11px;color:var(--muted);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+  .detail-path span{color:var(--accent)}
+  .detail-title{font-family:var(--font-display);font-size:22px;font-weight:700;color:#fff;margin-bottom:8px}
+  .detail-type{font-size:10px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:20px}
+  .detail-desc{color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:24px}
+  .detail-content{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:20px;margin-bottom:20px}
+  .detail-content-header{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .code-block{font-family:var(--font-mono);font-size:11px;line-height:1.7;color:#a8b4c0;white-space:pre;overflow-x:auto}
+  .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+
+  .compare-wrap{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+  .compare-col{background:var(--panel);border:1px solid var(--border);overflow:hidden}
+  .compare-head{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+  .compare-head .label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+  .compare-col.old .label{color:var(--accent3)}.compare-col.new .label{color:var(--accent)}
+  .compare-body{padding:24px}
+  .compare-item{display:flex;gap:12px;margin-bottom:16px;font-size:12px;line-height:1.6}
+  .compare-icon{flex-shrink:0;margin-top:2px}
+  .compare-item p{color:var(--muted)}.compare-item strong{color:var(--text);display:block;margin-bottom:2px}
+
+  .layer-row{display:grid;grid-template-columns:140px 1fr 200px;gap:16px;align-items:center;margin-bottom:4px;padding:16px 24px;border:1px solid transparent;cursor:pointer;transition:all .2s;border-radius:2px;position:relative;overflow:hidden}
+  .layer-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;opacity:0;transition:opacity .2s}
+  .layer-row:hover{background:rgba(255,255,255,.02);border-color:var(--border)}.layer-row:hover::before{opacity:1}
+  .layer-row.layer-1{background:rgba(255,107,53,.04)}.layer-row.layer-1::before{background:var(--accent3)}
+  .layer-row.layer-2{background:rgba(255,204,0,.04)}.layer-row.layer-2::before{background:var(--warn)}
+  .layer-row.layer-3{background:rgba(0,170,255,.04)}.layer-row.layer-3::before{background:var(--accent2)}
+  .layer-row.layer-4{background:rgba(0,255,136,.04)}.layer-row.layer-4::before{background:var(--accent)}
+  .layer-row.layer-5{background:rgba(0,255,136,.07)}.layer-row.layer-5::before{background:var(--accent)}
+  .layer-label{font-size:11px;letter-spacing:.08em;font-weight:700;text-transform:uppercase}
+  .layer-desc{font-size:12px;color:var(--muted);line-height:1.5}.layer-owner{font-size:11px;text-align:right;opacity:.7}
+  .layer-row.layer-1 .layer-label{color:var(--accent3)}.layer-row.layer-2 .layer-label{color:var(--warn)}
+  .layer-row.layer-3 .layer-label{color:var(--accent2)}.layer-row.layer-4 .layer-label,.layer-row.layer-5 .layer-label{color:var(--accent)}
+  .layers-note{margin-top:24px;padding:20px 24px;background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.15);border-radius:2px;font-size:12px;color:var(--muted);line-height:1.7}
+  .layers-note strong{color:var(--accent)}
+
+  .durability-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+  .dur-card{background:var(--panel);border:1px solid var(--border);padding:24px}
+  .dur-scenario{font-size:11px;color:var(--warn);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+  .dur-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:12px}
+  .dur-old{padding:10px 12px;background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.15);border-radius:2px;font-size:11px;color:var(--accent3);margin-bottom:8px;line-height:1.6}
+  .dur-new{padding:10px 12px;background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.15);border-radius:2px;font-size:11px;color:var(--accent);line-height:1.6}
+
+  .three-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin:32px 0}
+  .thing-card{background:var(--panel);border:1px solid var(--border);padding:28px;position:relative;overflow:hidden;transition:border-color .2s}
+  .thing-card:hover{border-color:var(--accent)}
+  .thing-num{font-family:var(--font-display);font-size:64px;font-weight:800;color:var(--border);position:absolute;right:16px;top:8px;line-height:1;user-select:none;transition:color .2s}
+  .thing-card:hover .thing-num{color:rgba(0,255,136,.1)}
+  .thing-icon{font-size:24px;margin-bottom:16px}
+  .thing-title{font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:8px}
+  .thing-desc{color:var(--muted);font-size:12px;line-height:1.7}
+  .thing-file{margin-top:12px;padding:8px 12px;background:var(--surface);border-radius:2px;font-size:11px;color:var(--accent)}
+
+  .callout{border-left:3px solid var(--accent);padding:20px 24px;margin:32px 0;background:rgba(0,255,136,.04)}
+  .callout p{font-size:15px;color:var(--text);line-height:1.8;font-style:italic}
+  .callout .attribution{margin-top:12px;font-size:11px;color:var(--muted);font-style:normal;letter-spacing:.05em}
+
+  /* ICM PAPER */
+  .paper-hero{padding:120px 48px 60px;max-width:1200px;margin:0 auto;border-bottom:1px solid var(--border)}
+  .paper-kicker{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent3);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+  .paper-kicker::before{content:'';width:32px;height:1px;background:var(--accent3)}
+  .paper-title{font-family:var(--font-display);font-size:clamp(32px,5vw,64px);font-weight:800;line-height:1;letter-spacing:-.02em;color:#fff;margin-bottom:12px}
+  .paper-title span{color:var(--accent)}
+  .paper-authors{font-size:12px;color:var(--muted);margin-bottom:32px;letter-spacing:.05em}
+  .paper-meta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px}
+  .paper-link{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;text-decoration:none;border-radius:2px;transition:all .2s;text-transform:uppercase;font-weight:700}
+  .paper-link.arxiv{background:rgba(255,107,53,.12);color:var(--accent3);border:1px solid rgba(255,107,53,.3)}
+  .paper-link.arxiv:hover{background:rgba(255,107,53,.2);transform:translateY(-1px)}
+  .paper-link.pdf{background:rgba(0,255,136,.08);color:var(--accent);border:1px solid rgba(0,255,136,.25)}
+  .paper-link.pdf:hover{background:rgba(0,255,136,.15);transform:translateY(-1px)}
+  .paper-link.html-v{background:rgba(0,170,255,.08);color:var(--accent2);border:1px solid rgba(0,170,255,.25)}
+  .paper-link.html-v:hover{background:rgba(0,170,255,.15);transform:translateY(-1px)}
+  .paper-abstract{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent3);padding:24px 28px;font-size:13px;color:var(--muted);line-height:1.8;max-width:800px}
+  .paper-abstract strong{color:var(--text)}
+
+  .icm-nav{position:sticky;top:52px;z-index:50;background:rgba(10,12,15,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:0 48px;display:flex;gap:0;overflow-x:auto}
+  .icm-nav-btn{padding:14px 16px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer;background:transparent;border:none;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-family:var(--font-mono)}
+  .icm-nav-btn:hover{color:var(--text)}.icm-nav-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  .icm-section{padding:72px 48px;max-width:1200px;margin:0 auto;border-bottom:1px solid var(--border)}
+  .icm-section:last-child{border-bottom:none}
+  .icm-section-num{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent3);margin-bottom:8px}
+  .icm-section-title{font-family:var(--font-display);font-size:clamp(22px,3vw,38px);font-weight:800;color:#fff;margin-bottom:8px;line-height:1.1}
+  .icm-section-title span{color:var(--accent)}
+  .icm-section-sub{color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:36px;max-width:680px}
+
+  .icm-table{width:100%;border-collapse:collapse;font-size:12px;margin:24px 0}
+  .icm-table th{text-align:left;padding:10px 16px;background:var(--panel);border:1px solid var(--border);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .icm-table td{padding:10px 16px;border:1px solid var(--border);color:var(--text);vertical-align:top;line-height:1.6}
+  .icm-table tr:nth-child(even) td{background:rgba(255,255,255,.01)}
+  .icm-table td:first-child{color:var(--accent3);font-weight:700}
+
+  .layer5-wrap{display:flex;flex-direction:column;gap:3px;margin:24px 0}
+  .layer5-row{display:grid;grid-template-columns:80px 140px 1fr 120px;gap:12px;align-items:center;padding:14px 20px;border-radius:2px;border:1px solid var(--border);transition:border-color .2s}
+  .layer5-row:hover{border-color:rgba(255,255,255,.15)}
+  .layer5-num{font-family:var(--font-display);font-size:28px;font-weight:800;opacity:.3}
+  .layer5-file{font-size:11px;font-weight:700;letter-spacing:.05em}
+  .layer5-desc{font-size:12px;color:var(--muted);line-height:1.5}
+  .layer5-tokens{font-size:11px;text-align:right;color:var(--warn)}
+  .l5-0{background:rgba(0,170,255,.04)}.l5-0 .layer5-num,.l5-0 .layer5-file{color:var(--accent2)}
+  .l5-1{background:rgba(0,255,136,.04)}.l5-1 .layer5-num,.l5-1 .layer5-file{color:var(--accent)}
+  .l5-2{background:rgba(0,255,136,.03)}.l5-2 .layer5-num,.l5-2 .layer5-file{color:var(--accent)}
+  .l5-3{background:rgba(255,204,0,.04)}.l5-3 .layer5-num,.l5-3 .layer5-file{color:var(--warn)}
+  .l5-4{background:rgba(180,142,173,.05)}.l5-4 .layer5-num,.l5-4 .layer5-file{color:#b48ead}
+
+  .split-table{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin:24px 0}
+  .split-col{background:var(--panel);border:1px solid var(--border);overflow:hidden}
+  .split-head{padding:14px 20px;border-bottom:1px solid var(--border);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+  .split-col:first-child .split-head{color:var(--warn)}.split-col:last-child .split-head{color:#b48ead}
+  .split-body{padding:20px}
+  .split-row{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+  .split-row:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+  .split-label{color:var(--muted);flex-shrink:0}.split-val{color:var(--text);text-align:right}
+
+  .lineage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin:24px 0}
+  .lin-card{background:var(--panel);border:1px solid var(--border);padding:24px;transition:border-color .2s}
+  .lin-card:hover{border-color:var(--accent)}
+  .lin-year{font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:6px}
+  .lin-name{font-family:var(--font-display);font-size:16px;font-weight:800;color:#fff;margin-bottom:4px}
+  .lin-source{font-size:11px;color:var(--accent2);margin-bottom:12px}
+  .lin-desc{font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px}
+  .lin-icm{font-size:11px;color:var(--accent);padding:8px 12px;background:rgba(0,255,136,.06);border-radius:2px;border:1px solid rgba(0,255,136,.15)}
+
+  .ushape-wrap{background:var(--panel);border:1px solid var(--border);padding:32px;margin:24px 0;border-radius:2px}
+  .ushape-bars{display:flex;align-items:flex-end;gap:8px;height:160px;margin-bottom:16px}
+  .ushape-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .ushape-bar{width:100%;border-radius:2px 2px 0 0}
+  .ushape-bar-label{font-size:10px;color:var(--muted);text-align:center;letter-spacing:.05em}
+  .ushape-pct{font-size:11px;font-weight:700}
+  .ushape-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px}
+  .ushape-legend-item{display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--muted);max-width:300px}
+  .ushape-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;margin-top:2px}
+
+  .tension-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin:24px 0}
+  .tension-card{background:var(--panel);border:1px solid var(--border);padding:24px}
+  .tension-num{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--warn);margin-bottom:8px}
+  .tension-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:10px}
+  .tension-desc{font-size:12px;color:var(--muted);line-height:1.7}
+
+  .works-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin:24px 0}
+  .works-col{background:var(--panel);border:1px solid var(--border);padding:24px;overflow:hidden;position:relative}
+  .works-col::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+  .works-col.yes::before{background:var(--accent)}.works-col.no::before{background:var(--accent3)}
+  .works-head{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-bottom:16px}
+  .works-col.yes .works-head{color:var(--accent)}.works-col.no .works-head{color:var(--accent3)}
+  .works-item{display:flex;gap:10px;margin-bottom:10px;font-size:12px;color:var(--muted);line-height:1.6}
+
+  .future-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;margin:24px 0}
+  .future-card{background:var(--panel);border:1px solid var(--border);padding:24px;position:relative;overflow:hidden}
+  .future-card::after{content:'PROPOSED';position:absolute;right:12px;top:12px;font-size:9px;letter-spacing:.1em;color:var(--warn);border:1px solid rgba(255,204,0,.3);padding:2px 6px;border-radius:2px}
+  .future-icon{font-size:24px;margin-bottom:12px}
+  .future-title{font-family:var(--font-display);font-size:16px;font-weight:700;color:#fff;margin-bottom:8px}
+  .future-desc{font-size:12px;color:var(--muted);line-height:1.7}
+
+  .summary-map{background:var(--panel);border:1px solid var(--border);padding:28px;font-family:var(--font-mono);font-size:12px;line-height:2;margin:24px 0;border-radius:2px;overflow-x:auto}
+  .sm-header{color:var(--accent2);font-weight:700}
+  .sm-item{color:var(--text)}.sm-good{color:var(--accent)}.sm-bad{color:var(--accent3)}.sm-future{color:var(--warn)}.sm-muted{color:var(--muted)}
+
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  footer{border-top:1px solid var(--border);padding:32px 48px;display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto}
+  .footer-logo{font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--accent)}
+  .footer-note{font-size:11px;color:var(--muted)}
+
+  @media(max-width:768px){
+    section,.icm-section{padding:80px 24px 60px}
+    .paper-hero{padding:80px 24px 40px}
+    .icm-nav{padding:0 16px}
+    .problem-grid,.three-grid,.compare-wrap,.durability-grid,.tree-container,.lineage-grid,.future-grid,.works-grid,.tension-grid,.split-table{grid-template-columns:1fr}
+    .layer5-row{grid-template-columns:50px 1fr}.layer5-tokens{display:none}
+    .layer-row{grid-template-columns:100px 1fr}.layer-owner{display:none}
+    footer{flex-direction:column;gap:12px;text-align:center}
+    .topbar{padding:0 16px}.subnav{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">FILETREE.AGENT</div>
+  <div class="tab-switcher">
+    <button class="tab-btn active" onclick="switchTab('core')">Core Ideas</button>
+    <button class="tab-btn" onclick="switchTab('icm')">ICM Paper</button>
+  </div>
+  <div class="subnav" id="core-subnav">
+    <a onclick="snav('problem')">Problem</a>
+    <a onclick="snav('insight')">Insight</a>
+    <a onclick="snav('explorer')">Explorer</a>
+    <a onclick="snav('compare')">Compare</a>
+    <a onclick="snav('layers')">Layers</a>
+  </div>
+  <div class="subnav" id="icm-subnav" style="display:none">
+    <a onclick="snav('icm-problem')">Problem</a>
+    <a onclick="snav('icm-insight')">Insight</a>
+    <a onclick="snav('icm-lineage')">Lineage</a>
+    <a onclick="snav('icm-arch')">Architecture</a>
+    <a onclick="snav('icm-practice')">Practice</a>
+    <a onclick="snav('icm-scope')">Scope</a>
+    <a onclick="snav('icm-future')">Future</a>
+    <a onclick="snav('icm-summary')">Summary</a>
+  </div>
+</div>
+
+<!-- CORE IDEAS TAB -->
+<div id="tab-core" class="tab-pane active">
+
+<div id="hero">
+  <div class="hero-grid"><svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M 30 0 L 0 0 0 30" fill="none" stroke="#00ff88" stroke-width="0.4"/></pattern></defs><rect width="600" height="800" fill="url(#grid)"/></svg></div>
+  <div class="hero-eyebrow">The Architecture Nobody Is Selling</div>
+  <h1>The Best Agent<br>Is <span>Not An Agent</span><br>At All.</h1>
+  <p class="hero-sub">Everyone is building multi-agent orchestration systems. One company quietly realized the answer was already there — in a folder on your computer.</p>
+  <div class="hero-cta">
+    <a class="btn btn-primary" href="#" onclick="snav('problem');return false">Explore the Idea</a>
+    <a class="btn btn-ghost" href="#" onclick="switchTab('icm');return false">Read the ICM Paper →</a>
+  </div>
+</div>
+
+<section id="problem">
+  <div class="section-tag">01 — The Problem</div>
+  <h2>The <span>Context Wall</span></h2>
+  <p class="section-lead">To make AI useful, you need to route it to the right place — with the right instructions, tools, and data. This is the context wall. Everyone is solving it the hard way.</p>
+  <div class="reveal problem-grid">
+    <div class="prob-card bad"><div class="prob-label">❌ The Wrong Way</div><div class="prob-title">Agent Frameworks</div><div class="prob-desc">Teams spend months writing Python orchestration code — custom harnesses, routing graphs, vector databases — only to watch a model update break half of it.</div><div class="framework-tags"><span class="tag tag-red">LangChain</span><span class="tag tag-red">LangGraph</span><span class="tag tag-red">Semantic Kernel</span><span class="tag tag-red">AutoGen</span><span class="tag tag-red">CrewAI</span></div></div>
+    <div class="prob-card good"><div class="prob-label">✓ The Right Way</div><div class="prob-title">The File Tree</div><div class="prob-desc">A folder with a markdown file and a script. One coding agent reads it, gets full context, executes tasks, spawns sub-agents, and manages memory — zero orchestration code.</div><div class="framework-tags"><span class="tag tag-green">SKILL.md</span><span class="tag tag-green">script.py</span><span class="tag tag-green">data/</span><span class="tag tag-green">Claude Code</span></div></div>
+  </div>
+  <div class="reveal terminal">
+    <div class="terminal-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-title">~/company_ai $ — bash</span></div>
+    <div class="terminal-body" id="terminal-body"><span class="t-line"><span class="t-prompt">$ </span><span class="t-cmd" id="tcmd"></span><span class="cursor" id="tcursor"></span></span></div>
+  </div>
+</section>
+
+<section id="insight">
+  <div class="section-tag">02 — The Core Insight</div>
+  <h2>Every Agent Needs<br>Only <span>Three Things</span></h2>
+  <p class="section-lead">Strip away every framework. Any agent ever built is just a system for routing a model to the right combination of these three things — every time.</p>
+  <div class="reveal three-grid">
+    <div class="thing-card"><div class="thing-num">1</div><div class="thing-icon">📋</div><div class="thing-title">Instructions</div><div class="thing-desc">What the agent should do, how to behave, what rules it follows.</div><div class="thing-file">→ SKILL.md</div></div>
+    <div class="thing-card"><div class="thing-num">2</div><div class="thing-icon">🔧</div><div class="thing-title">Tools</div><div class="thing-desc">What the agent can actually do — APIs, code execution, database queries.</div><div class="thing-file">→ tools.py / MCP servers</div></div>
+    <div class="thing-card"><div class="thing-num">3</div><div class="thing-icon">🗄️</div><div class="thing-title">Data</div><div class="thing-desc">What the agent knows — company docs, history, config, reference knowledge.</div><div class="thing-file">→ data/ folder</div></div>
+  </div>
+  <div class="callout reveal"><p>"You can map every single AI agent out there to a simple file tree. Not approximately. Exactly."</p><div class="attribution">— Core Thesis</div></div>
+</section>
+
+<section id="explorer" style="min-height:auto;padding-bottom:40px">
+  <div class="section-tag">03 — Interactive Explorer</div>
+  <h2>Click Through the <span>Architecture</span></h2>
+  <p class="section-lead">A real company's AI setup — built entirely from folders and files. Click any node to understand what lives there and why.</p>
+  <div class="reveal tree-container">
+    <div class="tree-sidebar"><div class="tree-header"><span class="dot"></span> COMPANY_AI</div><div id="filetree"></div></div>
+    <div class="detail-panel" id="detail-panel"><div class="detail-empty"><div class="big">📂</div><div>Click a file or folder to explore</div></div></div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="section-tag">04 — Side by Side</div>
+  <h2>Old Way vs <span>Right Way</span></h2>
+  <p class="section-lead">The same outcome — a multi-workflow AI system — built two different ways.</p>
+  <div class="reveal compare-wrap">
+    <div class="compare-col old">
+      <div class="compare-head"><span style="font-size:18px">⚠️</span><span class="label">Agent Framework Approach</span></div>
+      <div class="compare-body">
+        <div class="compare-item"><span class="compare-icon" style="color:var(--accent3)">✗</span><div><strong>Three separate agent deployments</strong><p>One per workflow. Each has its own infrastructure, dependencies, failure modes.</p></div></div>
+        <div class="compare-item"><span class="compare-icon" style="color:var(--accent3)">✗</span><div><strong>Python orchestration code</strong><p>Thousands of lines that break on model updates.</p></div></div>
+        <div class="compare-item"><span class="compare-icon" style="color:var(--accent3)">✗</span><div><strong>Brittle to model updates</strong><p>Every new release potentially breaks the orchestration layer.</p></div></div>
+        <div class="compare-item"><span class="compare-icon" style="color:var(--accent3)">✗</span><div><strong>Scaling = more infrastructure</strong><p>10 workflows means 10 agent deployments.</p></div></div>
+      </div>
+    </div>
+    <div class="compare-col new">
+      <div class="compare-head"><span style="font-size:18px">✅</span><span class="label">File Tree Approach</span></div>
+      <div class="compare-body">
+        <div class="compare-item"><span class="compare-icon" style="color:var(--accent)">✓</span><div><strong>One agent, unlimited workflows</strong><p>Claude Code reads whatever skill folder it's pointed at. Zero extra infrastructure.</p></div></div>
+        <div class="compare-item"><span class="compare-icon" style="color:var(--accent)">✓</span><div><strong>Zero orchestration code</strong><p>Markdown and Python. Anyone can read, edit, and debug without a framework.</p></div></div>
+        <div class="compare-item"><span class="compare-icon" style="color:var(--accent)">✓</span><div><strong>Model updates make it better</strong><p>New capabilities condense to simpler instructions. Files never break.</p></div></div>
+        <div class="compare-item"><span class="compare-icon" style="color:var(--accent)">✓</span><div><strong>Scaling = adding folders</strong><p>Thousands of parallel instances from one foundation.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="layers">
+  <div class="section-tag">05 — Abstraction Layers</div>
+  <h2>Build at the <span>Right Layer</span></h2>
+  <p class="section-lead">Most developers build at the bottom two layers — where the ground shifts fastest.</p>
+  <div class="reveal">
+    <div class="layer-row layer-1"><div class="layer-label">⚠ Model Layer</div><div class="layer-desc">Raw intelligence and reasoning. Changes constantly.</div><div class="layer-owner" style="color:var(--accent3)">AI Companies — don't touch</div></div>
+    <div class="layer-row layer-2"><div class="layer-label">⚡ Agent Runtime</div><div class="layer-desc">VS Code / Cursor + Claude Code. Already built.</div><div class="layer-owner" style="color:var(--warn)">You — barely touch</div></div>
+    <div class="layer-row layer-3"><div class="layer-label">📄 Skill / Task</div><div class="layer-desc">SKILL.md + scripts. Atomic unit of work.</div><div class="layer-owner" style="color:var(--accent2)">You — build simply</div></div>
+    <div class="layer-row layer-4"><div class="layer-label">🗂 Workflow</div><div class="layer-desc">Folder of skill folders. One per department or role.</div><div class="layer-owner" style="color:var(--accent)">You — organize freely</div></div>
+    <div class="layer-row layer-5"><div class="layer-label">🤖 Sub-Agent</div><div class="layer-desc">Nested folders, spawned dynamically by the agent itself.</div><div class="layer-owner" style="color:var(--accent)">Agent — auto-generates</div></div>
+    <div class="layers-note"><strong>The insight:</strong> You're never racing against AI progress because <strong>you don't live at the layer that changes</strong>.</div>
+  </div>
+  <div style="margin-top:56px">
+    <h2 style="font-size:28px">Model Updates <span>Help You</span></h2>
+    <p class="section-lead" style="margin-top:12px">Instead of breaking your system, every improvement collapses complexity upward.</p>
+    <div class="reveal durability-grid">
+      <div class="dur-card"><div class="dur-scenario">Scenario 01</div><div class="dur-title">Model gains new capability</div><div class="dur-old">❌ Old: Orchestration layer needs refactoring.</div><div class="dur-new">✓ New: Update two lines in SKILL.md.</div></div>
+      <div class="dur-card"><div class="dur-scenario">Scenario 02</div><div class="dur-title">Competitor ships your feature</div><div class="dur-old">❌ Old: Your agent framework is commoditized.</div><div class="dur-new">✓ New: That workflow becomes a subfolder with one tool call.</div></div>
+      <div class="dur-card"><div class="dur-scenario">Scenario 03</div><div class="dur-title">You switch AI providers</div><div class="dur-old">❌ Old: Entire SDK surface changes. Months of migration.</div><div class="dur-new">✓ New: Point a different agent at the same folders.</div></div>
+    </div>
+  </div>
+</section>
+
+<section style="min-height:auto;text-align:center;padding:80px 48px">
+  <div class="section-tag" style="justify-content:center">The Punchline</div>
+  <h2 style="font-size:clamp(24px,4vw,56px)">The most powerful AI deployment<br>tool is <span>already on your computer</span></h2>
+  <p style="color:var(--muted);font-size:14px;max-width:560px;margin:24px auto 40px;line-height:1.8">Nobody is selling it. It's called a folder.</p>
+  <div class="pills" style="justify-content:center;gap:10px">
+    <span class="tag tag-green" style="font-size:12px;padding:6px 16px">Free</span>
+    <span class="tag tag-green" style="font-size:12px;padding:6px 16px">Already Built</span>
+    <span class="tag tag-green" style="font-size:12px;padding:6px 16px">Infinitely Scalable</span>
+    <span class="tag tag-green" style="font-size:12px;padding:6px 16px">Model-Agnostic</span>
+    <span class="tag tag-green" style="font-size:12px;padding:6px 16px">Never Obsolete</span>
+  </div>
+  <div style="margin-top:40px"><a class="btn btn-ghost" href="#" onclick="switchTab('icm');return false">Read the Academic Paper Behind This →</a></div>
+</section>
+
+</div><!-- /tab-core -->
+
+<!-- ICM PAPER TAB -->
+<div id="tab-icm" class="tab-pane">
+
+<div class="paper-hero">
+  <div class="paper-kicker">Academic Research · arXiv 2603.16021 · MIT License</div>
+  <div class="paper-title">Interpretable Context<br><span>Methodology</span></div>
+  <div class="paper-authors">Jake Van Clief &amp; David McDermott — Eduba / University of Edinburgh · March 2026</div>
+  <div class="paper-meta">
+    <a class="paper-link arxiv" href="https://arxiv.org/abs/2603.16021" target="_blank" rel="noopener">📄 arXiv Abstract</a>
+    <a class="paper-link pdf" href="https://arxiv.org/pdf/2603.16021" target="_blank" rel="noopener">⬇ Download PDF</a>
+    <a class="paper-link html-v" href="https://arxiv.org/html/2603.16021v2" target="_blank" rel="noopener">🌐 HTML Version</a>
+  </div>
+  <div class="paper-abstract"><strong>Abstract:</strong> Current approaches to AI agent orchestration typically involve building multi-agent frameworks that manage context passing, memory, error handling, and step coordination through code. These frameworks work well for complex, concurrent systems. But for sequential workflows where a human reviews output at each step, they introduce engineering overhead the problem does not require. This paper presents a method that replaces framework-level orchestration with filesystem structure — numbered folders as stages, plain markdown files as context, local scripts for mechanical tasks. Open source under the MIT license.</div>
+</div>
+
+<div class="icm-nav">
+  <button class="icm-nav-btn active" onclick="icmScroll('icm-problem',this)">01 Problem</button>
+  <button class="icm-nav-btn" onclick="icmScroll('icm-insight',this)">02 Insight</button>
+  <button class="icm-nav-btn" onclick="icmScroll('icm-lineage',this)">03 Lineage</button>
+  <button class="icm-nav-btn" onclick="icmScroll('icm-arch',this)">04 Architecture</button>
+  <button class="icm-nav-btn" onclick="icmScroll('icm-practice',this)">05 Practice</button>
+  <button class="icm-nav-btn" onclick="icmScroll('icm-scope',this)">06 Scope</button>
+  <button class="icm-nav-btn" onclick="icmScroll('icm-observability',this)">07 Observability</button>
+  <button class="icm-nav-btn" onclick="icmScroll('icm-future',this)">08 Future</button>
+  <button class="icm-nav-btn" onclick="icmScroll('icm-tensions',this)">09 Tensions</button>
+  <button class="icm-nav-btn" onclick="icmScroll('icm-summary',this)">10 Summary</button>
+</div>
+
+<div class="icm-section reveal" id="icm-problem">
+  <div class="icm-section-num">Section 01</div>
+  <div class="icm-section-title">The Problem <span>Being Solved</span></div>
+  <div class="icm-section-sub">Frameworks like LangChain and AutoGen are genuinely good tools — for concurrent, dynamic systems. But for sequential, human-reviewed workflows, they introduce enormous accidental complexity.</div>
+  <table class="icm-table">
+    <tr><th>Problem</th><th>What It Costs</th></tr>
+    <tr><td>Changing step order</td><td>Requires editing orchestration code and redeploying</td></tr>
+    <tr><td>Modifying a prompt</td><td>Requires finding it buried in agent configuration</td></tr>
+    <tr><td>Inspecting intermediate state</td><td>Requires adding logging, dashboards, or tracing infrastructure</td></tr>
+    <tr><td>Handing off to a colleague</td><td>Requires documenting environment, dependencies, and setup</td></tr>
+    <tr><td>Non-developer making changes</td><td>Often impossible without developer involvement</td></tr>
+  </table>
+  <div class="callout"><p>"For sequential workflows, you're using a hammer designed for a different nail."</p><div class="attribution">— ICM Paper, Section 1</div></div>
+</div>
+
+<div class="icm-section reveal" id="icm-insight">
+  <div class="icm-section-num">Section 02</div>
+  <div class="icm-section-title">The <span>Central Insight</span></div>
+  <div class="icm-section-sub">The paper's core observation is elegant and counterintuitive. You don't need a coordination framework — you need a folder structure. The "coordination logic" that LangChain puts in Python objects and message arrays, ICM puts in file names, folder hierarchy, and markdown contracts.</div>
+  <div class="problem-grid" style="margin-bottom:32px">
+    <div class="prob-card bad"><div class="prob-label">Framework Approach</div><div class="prob-title">Coordination in Code</div><div class="prob-desc">Agents as objects. State as in-memory variables. Coordination as function calls. Opaque by default, requires developers to modify. Breaks when models update.</div></div>
+    <div class="prob-card good"><div class="prob-label">ICM Approach</div><div class="prob-title">Coordination in Folders</div><div class="prob-desc">The filesystem IS the orchestrator. Coordination logic lives in file names, folder hierarchy, and markdown contracts. Plain text is the universal interface. Inspectable by anyone.</div></div>
+  </div>
+  <div class="callout"><p>"This is philosophically aligned with Unix's 1970s insight: the power comes not from any individual program, but from how they're connected — and plain text files are the universal connective tissue."</p><div class="attribution">— ICM Paper, Section 2</div></div>
+</div>
+
+<div class="icm-section reveal" id="icm-lineage">
+  <div class="icm-section-num">Section 03</div>
+  <div class="icm-section-title">Intellectual <span>Lineage</span></div>
+  <div class="icm-section-sub">The paper is unusually well-grounded in CS history. Each theoretical reference maps directly to a concrete ICM design decision — this is not a hack, it's a synthesis.</div>
+  <div class="lineage-grid">
+    <div class="lin-card"><div class="lin-year">1978</div><div class="lin-name">Unix Pipeline Philosophy</div><div class="lin-source">McIlroy</div><div class="lin-desc">"Do one thing well." "Output of one is input of another." "Plain text as universal interface." The foundational architecture of composable systems.</div><div class="lin-icm">→ Each ICM stage does one thing. Output folders feed next stages. Everything is markdown.</div></div>
+    <div class="lin-card"><div class="lin-year">1979</div><div class="lin-name">Make / Build Systems</div><div class="lin-source">Feldman</div><div class="lin-desc">Files are both the artifacts of work AND the coordination mechanism. No separate orchestration layer needed when the filesystem tracks what's been produced.</div><div class="lin-icm">→ ICM stages have explicit Input tables in their contracts, just like Make dependency declarations.</div></div>
+    <div class="lin-card"><div class="lin-year">1986</div><div class="lin-name">Multi-Pass Compilers</div><div class="lin-source">Aho, Lam, Sethi, Ullman</div><div class="lin-desc">A compiler does multiple passes. Tokenize → Parse → Analyze → Optimize → Generate. Each pass reads the prior output and transforms it into an intermediate representation.</div><div class="lin-icm">→ ICM does the same with content. Research → Script → Animation. Each stage is a pass. This unlocks incremental recompilation theory.</div></div>
+    <div class="lin-card"><div class="lin-year">1972</div><div class="lin-name">Information Hiding</div><div class="lin-source">Parnas / Dijkstra</div><div class="lin-desc">Systems should be decomposed so each module hides its internal decisions. "Address one thing at a time."</div><div class="lin-icm">→ Each ICM stage hides its processing from the next. Stage 2 only sees Stage 1's output file, not how it was produced.</div></div>
+    <div class="lin-card"><div class="lin-year">1984</div><div class="lin-name">Literate Programming</div><div class="lin-source">Knuth</div><div class="lin-desc">Programs should be written primarily for humans to read. The instruction and the documentation should be the same artifact — not separate documents.</div><div class="lin-icm">→ ICM's CONTEXT.md files are simultaneously agent instructions AND documentation. Reading them tells you exactly what the pipeline does.</div></div>
+    <div class="lin-card"><div class="lin-year">1991</div><div class="lin-name">"Worse is Better"</div><div class="lin-source">Gabriel</div><div class="lin-desc">Systems prioritizing simplicity of implementation tend to survive and spread. Easier to port, understand, and improve than feature-complete but complex alternatives.</div><div class="lin-icm">→ ICM trades framework flexibility for portability. A folder of markdown files can be zipped, emailed, or handed to a non-developer.</div></div>
+  </div>
+</div>
+
+<div class="icm-section reveal" id="icm-arch">
+  <div class="icm-section-num">Section 04</div>
+  <div class="icm-section-title">The Architecture <span>In Depth</span></div>
+  <div class="icm-section-sub">The heart of ICM is a five-layer context hierarchy. Every agent at every stage loads context from exactly these layers — structured so the model receives already-organized context, not a mixed dump.</div>
+  <div class="layer5-wrap">
+    <div class="layer5-row l5-0"><div class="layer5-num">0</div><div class="layer5-file">CLAUDE.md</div><div class="layer5-desc">Structural / routing — "Where am I?" Identity of the workspace. Top-level orientation for the agent.</div><div class="layer5-tokens">~800 tokens</div></div>
+    <div class="layer5-row l5-1"><div class="layer5-num">1</div><div class="layer5-file">CONTEXT.md</div><div class="layer5-desc">Structural / routing — "Where do I go?" Workspace structure, stage sequence, and navigation map.</div><div class="layer5-tokens">~300 tokens</div></div>
+    <div class="layer5-row l5-2"><div class="layer5-num">2</div><div class="layer5-file">Stage CONTEXT.md</div><div class="layer5-desc">Structural / routing — "What do I do?" The current stage's specific task, process, and output requirements.</div><div class="layer5-tokens">200–500 tokens</div></div>
+    <div class="layer5-row l5-3"><div class="layer5-num">3</div><div class="layer5-file">Reference Material</div><div class="layer5-desc">Content — "What rules apply?" voice.md, design-system.md, conventions.md. Static across runs. Model internalizes as constraints.</div><div class="layer5-tokens">500–2k tokens</div></div>
+    <div class="layer5-row l5-4"><div class="layer5-num">4</div><div class="layer5-file">Working Artifacts</div><div class="layer5-desc">Content — "What am I working with?" research-output.md, script-draft.md. Changes every run. Model transforms as input.</div><div class="layer5-tokens">Varies</div></div>
+  </div>
+  <div style="margin-top:40px;margin-bottom:12px;font-family:var(--font-display);font-size:20px;font-weight:700;color:#fff">Layer 3 vs Layer 4: <span style="color:var(--accent)">The Critical Distinction</span></div>
+  <p style="color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:20px;max-width:680px">When you mix rules with per-run content in an undifferentiated context window, the model has to sort them itself. ICM separates them structurally before the model ever sees them.</p>
+  <div class="split-table">
+    <div class="split-col"><div class="split-head">Layer 3 — The Factory (Reference)</div><div class="split-body"><div class="split-row"><span class="split-label">Changes per run?</span><span class="split-val" style="color:var(--accent)">No</span></div><div class="split-row"><span class="split-label">Examples</span><span class="split-val">voice.md, design-system.md</span></div><div class="split-row"><span class="split-label">Model should</span><span class="split-val">Internalize as constraints</span></div><div class="split-row"><span class="split-label">Analogy</span><span class="split-val" style="color:var(--warn)">The recipe</span></div></div></div>
+    <div class="split-col"><div class="split-head">Layer 4 — The Product (Working)</div><div class="split-body"><div class="split-row"><span class="split-label">Changes per run?</span><span class="split-val" style="color:var(--accent3)">Yes</span></div><div class="split-row"><span class="split-label">Examples</span><span class="split-val">research-output.md, script-draft.md</span></div><div class="split-row"><span class="split-label">Model should</span><span class="split-val">Transform as input</span></div><div class="split-row"><span class="split-label">Analogy</span><span class="split-val" style="color:#b48ead">The ingredients</span></div></div></div>
+  </div>
+  <div class="callout" style="margin-top:32px"><p>ICM keeps each stage at 2,000–8,000 focused tokens. The monolithic alternative reaches 30,000–50,000 tokens, most of it irrelevant to the current stage. This is prevention, not compression — the irrelevant tokens are never loaded in the first place.</p><div class="attribution">— Citing Liu et al., "Lost in the Middle," 2024</div></div>
+</div>
+
+<div class="icm-section reveal" id="icm-practice">
+  <div class="icm-section-num">Section 05</div>
+  <div class="icm-section-title">What Practitioners <span>Actually Do</span></div>
+  <div class="icm-section-sub">Empirical observation from 33 practitioners reveals a U-shaped intervention pattern. High editing at the start and end, lower in the middle. This isn't complacency — it's appropriate calibration.</div>
+  <div class="ushape-wrap">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:20px;letter-spacing:.05em;text-transform:uppercase">Human Edit Rate by Pipeline Stage</div>
+    <div class="ushape-bars">
+      <div class="ushape-bar-wrap"><div class="ushape-bar" style="height:147px;background:linear-gradient(to top,var(--accent3),rgba(255,107,53,.3))"></div><div class="ushape-bar-label">Stage 1<br>Research</div><div class="ushape-pct" style="color:var(--accent3)">~92%</div></div>
+      <div class="ushape-bar-wrap"><div class="ushape-bar" style="height:48px;background:linear-gradient(to top,var(--accent2),rgba(0,170,255,.3))"></div><div class="ushape-bar-label">Stage 2<br>Script</div><div class="ushape-pct" style="color:var(--accent2)">~30%</div></div>
+      <div class="ushape-bar-wrap"><div class="ushape-bar" style="height:48px;background:linear-gradient(to top,var(--accent2),rgba(0,170,255,.3))"></div><div class="ushape-bar-label">Stage 3<br>Middle</div><div class="ushape-pct" style="color:var(--accent2)">~30%</div></div>
+      <div class="ushape-bar-wrap"><div class="ushape-bar" style="height:125px;background:linear-gradient(to top,var(--accent),rgba(0,255,136,.3))"></div><div class="ushape-bar-label">Final<br>Production</div><div class="ushape-pct" style="color:var(--accent)">~78%</div></div>
+    </div>
+    <div class="ushape-legend">
+      <div class="ushape-legend-item"><div class="ushape-dot" style="background:var(--accent3)"></div><span>Stage 1: Directional editing — narrowing from broad possibilities. Creative human judgment.</span></div>
+      <div class="ushape-legend-item"><div class="ushape-dot" style="background:var(--accent2)"></div><span>Middle: Well-constrained stages — clear inputs + strong reference = narrow error space.</span></div>
+      <div class="ushape-legend-item"><div class="ushape-dot" style="background:var(--accent)"></div><span>Final: Alignment editing — checking output against earlier decisions. Closer to debugging.</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="icm-section reveal" id="icm-scope">
+  <div class="icm-section-num">Section 06</div>
+  <div class="icm-section-title">Where ICM <span>Works and Doesn't</span></div>
+  <div class="icm-section-sub">The paper is admirably honest. ICM isn't replacing frameworks across the board — it targets a large, common, underserved class of workflows that existing tools over-engineer.</div>
+  <div class="works-grid">
+    <div class="works-col yes"><div class="works-head">✓ ICM Works For</div>
+      <div class="works-item"><span>✓</span><span><strong style="color:var(--text)">Sequential workflows</strong> — step 2 genuinely follows step 1</span></div>
+      <div class="works-item"><span>✓</span><span><strong style="color:var(--text)">Human-reviewed workflows</strong> — a person checks each step</span></div>
+      <div class="works-item"><span>✓</span><span><strong style="color:var(--text)">Repeatable workflows</strong> — same pipeline, different inputs each run (weekly reports, video production, course development)</span></div>
+      <div class="works-item"><span>✓</span><span><strong style="color:var(--text)">Non-developer operators</strong> — the markdown interface means anyone can modify stage behavior</span></div>
+    </div>
+    <div class="works-col no"><div class="works-head">✗ ICM Does NOT Work For</div>
+      <div class="works-item"><span>✗</span><span><strong style="color:var(--text)">Real-time multi-agent collaboration</strong> — agents needing tight communication loops (AutoGen is right here)</span></div>
+      <div class="works-item"><span>✗</span><span><strong style="color:var(--text)">High-concurrency systems</strong> — many users hitting the same pipeline simultaneously</span></div>
+      <div class="works-item"><span>✗</span><span><strong style="color:var(--text)">Complex automated branching</strong> — mid-pipeline automated decisions require scripting that turns ICM into a framework anyway</span></div>
+      <div class="works-item"><span>✗</span><span><strong style="color:var(--text)">Dynamic, unpredictable workflows</strong> — if you don't know the stages in advance, you can't define the folders in advance</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="icm-section reveal" id="icm-observability">
+  <div class="icm-section-num">Section 07</div>
+  <div class="icm-section-title">Observability as <span>Side Effect</span></div>
+  <div class="icm-section-sub">One of the most important points in the paper: observability isn't a feature you add — it's a structural consequence. You cannot make the system opaque. There's nothing to hide.</div>
+  <div class="three-grid">
+    <div class="thing-card"><div class="thing-num">A</div><div class="thing-icon">🔍</div><div class="thing-title">Inherently Inspectable</div><div class="thing-desc">Every intermediate output is a plain file in a predictable folder. Open it in any text editor. No dashboards, no logging infrastructure, no tracing setup required.</div></div>
+    <div class="thing-card"><div class="thing-num">B</div><div class="thing-icon">⚖️</div><div class="thing-title">Regulatory Alignment</div><div class="thing-desc">The EU AI Act requires human oversight, staged review points, and audit trails for high-risk AI systems. ICM produces all three as a byproduct of architecture — for free.</div></div>
+    <div class="thing-card"><div class="thing-num">C</div><div class="thing-icon">🧠</div><div class="thing-title">Rudin's Principle</div><div class="thing-desc">Stop building opaque systems and trying to explain them after the fact. Build systems that are inherently interpretable. ICM is a direct implementation of this principle.</div></div>
+  </div>
+</div>
+
+<div class="icm-section reveal" id="icm-future">
+  <div class="icm-section-num">Section 08</div>
+  <div class="icm-section-title">Future <span>Directions</span></div>
+  <div class="icm-section-sub">Section 6 of the paper extends the multi-pass compiler analogy into specific proposed tooling — applying decades of compiler theory to AI workflow debugging.</div>
+  <div class="future-grid">
+    <div class="future-card"><div class="future-icon">🔗</div><div class="future-title">Output Provenance Identifiers</div><div class="future-desc">Embed markers in stage outputs that link back to the source instruction — like debug symbols in compiled binaries. Trace a wrong phrase in Stage 3 all the way back to the specific line in voice.md that caused it.</div></div>
+    <div class="future-card"><div class="future-icon">✔️</div><div class="future-title">Cross-Stage Trace Verification</div><div class="future-desc">A Verify section in stage contracts that checks current output against earlier stage outputs. Already prototyped as an "audit file" catching timing and alignment errors between Stage 2 and Stage 3.</div></div>
+    <div class="future-card"><div class="future-icon">⏸️</div><div class="future-title">Breakpoints in Markdown</div><div class="future-desc">Pause execution mid-stage to verify the agent interpreted a constraint correctly before continuing. Semantic debugging — inspect the agent's current interpretation, not just its final output.</div></div>
+  </div>
+  <div style="margin-top:32px;background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--warn);padding:28px">
+    <div style="font-size:11px;color:var(--warn);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px">The Edit-Source Principle</div>
+    <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:12px">Editing output is patching the binary</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.8;max-width:700px">Two kinds of edits exist: <strong style="color:var(--text)">creative edits</strong> (genuine human value — correct to edit output) and <strong style="color:var(--text)">diagnostic edits</strong> (you tighten the same paragraph every run — this is a bug in the source contract). The proposed direction: track output edits across runs, surface recurring patterns, and suggest source-level changes. Workspaces that improve with use.</p>
+  </div>
+</div>
+
+<div class="icm-section reveal" id="icm-tensions">
+  <div class="icm-section-num">Section 09</div>
+  <div class="icm-section-title">Key Nuances &amp; <span>Tensions</span></div>
+  <div class="icm-section-sub">The paper is unusually self-aware. It names five tensions any serious practitioner should understand before adopting ICM.</div>
+  <div class="tension-grid">
+    <div class="tension-card"><div class="tension-num">Tension 01</div><div class="tension-title">Simplicity vs. Capability</div><div class="tension-desc">ICM explicitly trades capability for simplicity — no concurrent execution, no complex branching, no real-time coordination. The tradeoff is only acceptable if your workflows fall within ICM's scope.</div></div>
+    <div class="tension-card"><div class="tension-num">Tension 02</div><div class="tension-title">Self-Reported Empirical Data</div><div class="tension-desc">The U-shaped intervention pattern and the 30-of-33 practitioner claims come from self-reported conversations in an invite-only community. The paper acknowledges this. These are hypotheses worth testing, not established facts.</div></div>
+    <div class="tension-card"><div class="tension-num">Tension 03</div><div class="tension-title">Model Agnosticism vs. Specific Implementation</div><div class="tension-desc">ICM claims model-agnosticism, but all testing was done on Claude Opus/Sonnet. The 5-layer hierarchy was likely tuned to how Claude handles context. Whether it generalizes to GPT-4o, Gemini, or Llama is an open empirical question.</div></div>
+    <div class="tension-card"><div class="tension-num">Tension 04</div><div class="tension-title">Output Editing vs. Source Improvement</div><div class="tension-desc">The review gate design encourages editing output. But editing output without updating the source means the pipeline doesn't improve over runs. The tooling to close this loop doesn't exist yet.</div></div>
+    <div class="tension-card" style="grid-column:1/-1"><div class="tension-num">Tension 05</div><div class="tension-title">Growing Context Windows</div><div class="tension-desc">As models handle 200K+ tokens without degradation, the engineering argument for scoped context loading weakens. But the human-interaction arguments remain: even if the model handles 50K tokens equally well, the practitioner still cannot review a 50K-token context to catch errors. Observability and editability are human concerns, not just model concerns.</div></div>
+  </div>
+</div>
+
+<div class="icm-section reveal" id="icm-summary">
+  <div class="icm-section-num">Section 10</div>
+  <div class="icm-section-title">The Complete <span>Picture</span></div>
+  <div class="icm-section-sub">The philosophical claim: the filesystem is a coordination primitive that has been systematically underused in AI system design. What if files are the universal interface?</div>
+  <div class="summary-map"><span class="sm-header">PROBLEM:</span>  <span class="sm-item">Sequential AI workflows → frameworks add unnecessary complexity</span>
+
+<span class="sm-header">INSIGHT:</span>  <span class="sm-item">Filesystem IS the orchestrator  (Unix, 1970s — still works)</span>
+
+<span class="sm-header">SOLUTION: ICM</span>
+<span class="sm-good">  ├── Numbered folders = stage sequence</span>
+<span class="sm-good">  ├── CONTEXT.md files = stage contracts</span>
+<span class="sm-good">  ├── Layer 3/4 split = rules vs. inputs</span>
+<span class="sm-good">  ├── Review gates = human control points</span>
+<span class="sm-good">  └── Output folders = handoff points</span>
+
+<span class="sm-header">THEORETICAL GROUNDING:</span>
+<span class="sm-muted">  Unix pipelines → composability</span>
+<span class="sm-muted">  Make → files as coordination</span>
+<span class="sm-muted">  Compilers → multi-pass transforms</span>
+<span class="sm-muted">  Literate programming → self-documenting</span>
+<span class="sm-muted">  Context engineering → focused windows</span>
+
+<span class="sm-header">RESULT:</span>
+<span class="sm-good">  ✓ No framework code          ✓ No server infrastructure</span>
+<span class="sm-good">  ✓ Editable by non-developers ✓ Observable by default</span>
+<span class="sm-good">  ✓ Version-controllable       ✓ Portable as a zip file</span>
+<span class="sm-bad">  ✗ No concurrency             ✗ No complex branching</span>
+<span class="sm-bad">  ✗ Not for dynamic workflows</span>
+
+<span class="sm-header">FUTURE:</span>
+<span class="sm-future">  → Semantic debugging (trace output to source)</span>
+<span class="sm-future">  → Edit-source principle (improve pipeline over time)</span>
+<span class="sm-future">  → Cross-stage verification</span></div>
+
+  <div style="margin-top:40px;display:flex;gap:12px;flex-wrap:wrap">
+    <a class="paper-link arxiv" href="https://arxiv.org/abs/2603.16021" target="_blank" rel="noopener">📄 arXiv Abstract</a>
+    <a class="paper-link pdf" href="https://arxiv.org/pdf/2603.16021" target="_blank" rel="noopener">⬇ Download PDF</a>
+    <a class="paper-link html-v" href="https://arxiv.org/html/2603.16021v2" target="_blank" rel="noopener">🌐 HTML Version</a>
+  </div>
+</div>
+
+</div><!-- /tab-icm -->
+
+<footer>
+  <div class="footer-logo">FILETREE.AGENT</div>
+  <div class="footer-note">The best agent is a markdown file. · arXiv 2603.16021</div>
+</footer>
+
+<script>
+function switchTab(id){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>{if((id==='core'&&b.textContent.includes('Core'))||(id==='icm'&&b.textContent.includes('ICM')))b.classList.add('active');});
+  document.getElementById('core-subnav').style.display=id==='core'?'flex':'none';
+  document.getElementById('icm-subnav').style.display=id==='icm'?'flex':'none';
+  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(runReveal,200);
+}
+function snav(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth'});}
+function icmScroll(id,btn){
+  document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelectorAll('.icm-nav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function runReveal(){
+  const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:0.06});
+  document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+}
+runReveal();
+
+// terminal
+const lines=[{type:'cmd',text:'ls -la company_ai/'},{type:'out',text:'drwxr-xr-x  onboarding/'},{type:'out',text:'drwxr-xr-x  finance/'},{type:'out',text:'drwxr-xr-x  engineering/'},{type:'cmd',text:'cat onboarding/SKILL.md'},{type:'success',text:'# Onboarding Agent\n## Tools: HR system, email\n## Data: ./data/employee_templates/'},{type:'cmd',text:'claude-code --skill onboarding/ "Set up new employee John"'},{type:'info',text:'→ Reading SKILL.md... loaded context'},{type:'info',text:'→ Calling HR system tool... ✓'},{type:'info',text:'→ Spawning sub-agent: email_setup/'},{type:'success',text:'✓ Done. No framework. No harness. Just files.'}];
+let li=0,ci=0;
+const tbody=document.getElementById('terminal-body');
+function typeNext(){if(li>=lines.length){li=0;ci=0;tbody.innerHTML='<span class="t-line"><span class="t-prompt">$ </span><span class="t-cmd" id="tcmd"></span><span class="cursor" id="tcursor"></span></span>';return;}const line=lines[li];const el=document.getElementById('tcmd');const cur=document.getElementById('tcursor');if(!el)return;if(ci<line.text.length){el.textContent+=line.text[ci++];setTimeout(typeNext,line.type==='cmd'?40:12);}else{const span=document.createElement('span');span.className='t-line';const cc=line.type==='cmd'?'t-cmd':line.type==='success'?'t-success':line.type==='info'?'t-info':'t-out';const pre=line.type==='cmd'?'<span class="t-prompt">$ </span>':'';span.innerHTML=pre+`<span class="${cc}">${line.text.replace(/\n/g,'<br>')}</span>`;cur.parentNode.parentNode.insertBefore(span,cur.parentNode);el.textContent='';li++;ci=0;setTimeout(typeNext,line.type==='cmd'?600:200);}}
+setTimeout(typeNext,1200);
+
+// file tree
+const treeData=[{id:'root',name:'company_ai/',type:'folder',open:true,detail:{title:'company_ai/',type:'Root Workspace',color:'var(--accent2)',desc:'The top-level folder is your entire AI infrastructure. No databases, no deployed services, no orchestration layer. Everything lives here — and everything is readable by any coding agent.',content:null,pills:['VS Code / Cursor','Claude Code','MCP Servers']},children:[
+{id:'onboarding',name:'onboarding/',type:'folder',open:false,detail:{title:'onboarding/',type:'Workflow Folder',color:'var(--accent2)',desc:'One folder per workflow. This folder contains everything the AI needs to handle employee onboarding end-to-end — instructions, tools, and data all isolated here.',content:null,pills:['Employee 1','Workflow Isolation','Self-contained']},children:[
+{id:'on-skill',name:'SKILL.md',type:'md',detail:{title:'SKILL.md',type:'Instructions File',color:'var(--accent)',desc:'The brain of this workflow. The coding agent reads this file first — it defines the agent\'s role, responsibilities, constraints, and approach.',content:`# Onboarding Workflow Agent\n\n## Role\nYou handle new employee onboarding.\n\n## Rules\n- Confirm employee details before acting\n- Use HR tool to check records first\n- Spawn email_setup/ sub-agent for comms\n\n## Memory\nWrite completed tasks to ./data/log.md`,pills:['Prompts','Rules','Memory Instructions']}},
+{id:'on-tools',name:'tools.py',type:'py',detail:{title:'tools.py',type:'Tools File',color:'#ffd700',desc:'Every external action the agent can take lives here — API calls, database queries, file operations.',content:`def get_employee_record(employee_id):\n    return hr_api.get(employee_id)\n\ndef create_onboarding_doc(template, data):\n    return docs_api.create(template, data)\n\ndef send_welcome_email(to, name):\n    return email_mcp.send(to, name)`,pills:['API Calls','MCP Connections','File Operations']}},
+{id:'on-data',name:'data/',type:'folder',open:false,detail:{title:'data/',type:'Data Folder',color:'#b48ead',desc:'Templates, reference docs, logs, configurations. The agent reads and writes here for persistent memory.',content:null,pills:['Templates','Logs','Agent Memory']},children:[
+{id:'on-tmpl',name:'employee_templates.md',type:'data',detail:{title:'employee_templates.md',type:'Data File',color:'#b48ead',desc:'Reference data the agent accesses during execution. No database required — just a file.',content:`# Email Templates\n## Welcome Email\nHi {name}, welcome to {company}...\n\n## Checklist\n- [ ] GitHub access\n- [ ] Slack invite\n- [ ] Equipment request`,pills:['Reference Data','Templates','Static Config']}}
+]}
+]},
+{id:'engineering',name:'engineering/',type:'folder',open:false,detail:{title:'engineering/',type:'Workflow Folder',color:'var(--accent2)',desc:'A completely separate workflow for the engineering team. Same base agent, completely different context. No shared state.',content:null,pills:['Employee 2','Isolated Context','Different Tools']},children:[
+{id:'eng-skill',name:'SKILL.md',type:'md',detail:{title:'SKILL.md',type:'Instructions File',color:'var(--accent)',desc:'Engineering-specific instructions. The same base agent now knows it\'s an engineering assistant — because this file tells it so.',content:`# Engineering Workflow Agent\n\n## Role\nAssist engineers with code review,\nPR analysis, and documentation.\n\n## Access\n- GitHub MCP: read/write repos\n- Jira MCP: read tickets\n\n## Sub-agents\nSpawn review/ for deep code review`,pills:['Engineering Context','Code Review','Same Agent Base']}},
+{id:'eng-tools',name:'tools.py',type:'py',detail:{title:'tools.py',type:'Tools File',color:'#ffd700',desc:'Engineering-specific tools. Completely different toolset than onboarding — but the same file-tree pattern.',content:`def analyze_pull_request(pr_id):\n    return github_mcp.get_pr(pr_id)\n\ndef get_open_tickets(sprint):\n    return jira_mcp.sprint(sprint)\n\ndef update_documentation(page, content):\n    return confluence_mcp.update(page, content)`,pills:['GitHub MCP','Jira MCP','Confluence']}}
+]},
+{id:'finance',name:'finance/',type:'folder',open:false,detail:{title:'finance/',type:'Workflow Folder',color:'var(--accent2)',desc:'Finance workflow. Three departments, three folders, one agent. Not three deployments — one agent that reads three different skill contexts.',content:null,pills:['Employee 3','Finance Context','One Agent']},children:[
+{id:'fin-skill',name:'SKILL.md',type:'md',detail:{title:'SKILL.md',type:'Instructions File',color:'var(--accent)',desc:'Finance-specific context. Expense analysis, budget reporting, invoice processing — all defined in a file.',content:`# Finance Workflow Agent\n\n## Role\nHandle expense reports, budget queries,\nand invoice processing.\n\n## Rules\n- Never approve over $10,000 without\n  human review\n- Flag duplicate invoices\n\n## Escalation\nSpawn approval/ sub-agent for\nhigh-value items`,pills:['Budget Context','Audit Trail','Escalation Rules']}}
+]}
+]}];
+function renderTree(nodes,depth=0){let h='';nodes.forEach(n=>{const ind=depth*16;const ic=n.type==='md'?'file-md':n.type==='py'?'file-py':n.type==='data'?'file-data':'folder-name';const icon=n.type==='folder'?'📁':n.type==='md'?'📄':n.type==='py'?'🐍':'🗂';const has=n.children&&n.children.length>0;const badge=n.detail?.pills?.[0]?`<span class="tree-badge">${n.detail.pills[0]}</span>`:'';h+=`<div class="tree-node" data-id="${n.id}" onclick="selectNode('${n.id}')"><span class="tree-indent" style="width:${ind}px"></span>${has?`<span class="tree-toggle ${n.open?'open':''}" id="tg-${n.id}">▶</span>`:'<span style="width:14px;display:inline-block"></span>'}<span>${icon}</span><span class="tree-name ${ic}">${n.name}</span>${badge}</div>`;if(has&&n.open)h+=renderTree(n.children,depth+1);});return h;}
+function findNode(id,nodes){for(const n of nodes){if(n.id===id)return n;if(n.children){const f=findNode(id,n.children);if(f)return f;}}return null;}
+function toggleFolder(n){n.open=!n.open;document.getElementById('filetree').innerHTML=renderTree(treeData);}
+function selectNode(id){const n=findNode(id,treeData);if(!n)return;if(n.type==='folder')toggleFolder(n);document.querySelectorAll('.tree-node').forEach(el=>el.classList.toggle('active',el.dataset.id===id));if(!n.detail)return;const d=n.detail;const ch=d.content?`<div class="detail-content"><div class="detail-content-header">File Contents</div><div class="code-block">${d.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/(#[^\n]+)/g,'<span class="code-comment">$1</span>').replace(/(def \w+)/g,'<span class="code-fn">$1</span>').replace(/(".*?")/g,'<span class="code-string">$1</span>').replace(/(##[^\n]+)/g,'<span class="code-key">$1</span>')}</div></div>`:'';const ph=d.pills?`<div class="pills">${d.pills.map(p=>`<span class="tag tag-green">${p}</span>`).join('')}</div>`:'';let path='company_ai/';if(id.includes('on'))path+='onboarding/';if(id.includes('eng'))path+='engineering/';if(id.includes('fin'))path+='finance/';if(n.type!=='folder')path+=n.name;document.getElementById('detail-panel').innerHTML=`<div class="detail-path">📁 <span>${path}</span></div><div class="detail-type" style="color:${d.color}">${d.type}</div><div class="detail-title">${d.title}</div><div class="detail-desc">${d.desc}</div>${ch}${ph}`;}
+document.getElementById('filetree').innerHTML=renderTree(treeData);
+</script>
+</body>
+</html>
